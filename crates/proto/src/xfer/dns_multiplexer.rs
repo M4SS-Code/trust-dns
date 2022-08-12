@@ -17,11 +17,11 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use futures_channel::mpsc;
 use futures_util::stream::{Stream, StreamExt};
 use futures_util::{future::Future, ready, FutureExt};
 use rand;
 use rand::distributions::{Distribution, Standard};
+use tokio::sync::mpsc;
 use tracing::{debug, warn};
 
 use crate::error::*;
@@ -75,7 +75,7 @@ impl ActiveRequest {
     }
 
     /// Sends an error
-    fn complete_with_error(mut self, error: ProtoError) {
+    fn complete_with_error(self, error: ProtoError) {
         ignore_send(self.completion.try_send(Err(error)));
     }
 }

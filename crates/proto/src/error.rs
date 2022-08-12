@@ -81,7 +81,7 @@ pub enum ProtoErrorKind {
 
     /// An error caused by a canceled future
     #[error("future was canceled: {0:?}")]
-    Canceled(futures_channel::oneshot::Canceled),
+    Canceled(tokio::sync::oneshot::error::RecvError),
 
     /// Character data length exceeded the limit
     #[error("char data length exceeds {max}: {len}")]
@@ -469,7 +469,7 @@ impl Clone for ProtoErrorKind {
         match *self {
             BadQueryCount(count) => BadQueryCount(count),
             Busy => Busy,
-            Canceled(ref c) => Canceled(*c),
+            Canceled(ref c) => Canceled(c.clone()),
             CharacterDataTooLong { max, len } => CharacterDataTooLong { max, len },
             LabelOverlapsWithOther { label, other } => LabelOverlapsWithOther { label, other },
             DnsKeyProtocolNot3(protocol) => DnsKeyProtocolNot3(protocol),

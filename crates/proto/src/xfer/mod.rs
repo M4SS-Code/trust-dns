@@ -9,11 +9,10 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures_channel::mpsc;
-use futures_channel::oneshot;
 use futures_util::future::Future;
 use futures_util::ready;
 use futures_util::stream::{Fuse, Peekable, Stream, StreamExt};
+use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, warn};
 
 use crate::error::*;
@@ -44,9 +43,9 @@ pub use self::retry_dns_handle::RetryDnsHandle;
 pub use self::serial_message::SerialMessage;
 
 /// Ignores the result of a send operation and logs and ignores errors
-fn ignore_send<M, T>(result: Result<M, mpsc::TrySendError<T>>) {
+fn ignore_send<M, T: std::fmt::Debug>(result: Result<M, mpsc::error::TrySendError<T>>) {
     if let Err(error) = result {
-        if error.is_disconnected() {
+        if let tokio::sync::mpsc::error::TrySendError::Closed(_) = error {
             debug!("ignoring send error on disconnected stream");
             return;
         }
@@ -67,7 +66,7 @@ pub trait DnsClientStream:
 }
 
 /// Receiver handle for peekable fused SerialMessage channel
-pub type StreamReceiver = Peekable<Fuse<mpsc::Receiver<SerialMessage>>>;
+pub type StreamReceiver = Peekable<Fuse<tokio_stream::wrappers::ReceiverStream<SerialMessage>>>;
 
 const CHANNEL_BUFFER_SIZE: usize = 32;
 
@@ -89,6 +88,7 @@ impl BufDnsStreamHandle {
     /// * `sender` - the handle being used to send data to the server
     pub fn new(remote_addr: SocketAddr) -> (Self, StreamReceiver) {
         let (sender, receiver) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+        let receiver = tokio_stream::wrappers::ReceiverStream::new(receiver);
         let receiver = receiver.fuse().peekable();
 
         let this = Self {

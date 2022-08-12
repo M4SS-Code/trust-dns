@@ -11,9 +11,9 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures_channel::mpsc;
 use futures_util::future::{Future, FutureExt};
 use futures_util::stream::{Peekable, Stream, StreamExt};
+use tokio::sync::mpsc;
 use tracing::{debug, warn};
 
 use crate::error::*;
@@ -46,6 +46,7 @@ impl DnsExchange {
         S: DnsRequestSender + 'static + Send + Unpin,
     {
         let (sender, outbound_messages) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+        let outbound_messages = tokio_stream::wrappers::ReceiverStream::new(outbound_messages);
         let message_sender = BufDnsRequestStreamHandle { sender };
 
         Self::from_stream_with_receiver(stream, outbound_messages, message_sender)
@@ -54,7 +55,7 @@ impl DnsExchange {
     /// Wraps a stream where a sender and receiver have already been established
     pub fn from_stream_with_receiver<S, TE>(
         stream: S,
-        receiver: mpsc::Receiver<OneshotDnsRequest>,
+        receiver: tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>,
         sender: BufDnsRequestStreamHandle,
     ) -> (Self, DnsExchangeBackground<S, TE>)
     where
@@ -79,6 +80,7 @@ impl DnsExchange {
         TE: Time + Unpin,
     {
         let (sender, outbound_messages) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+        let outbound_messages = tokio_stream::wrappers::ReceiverStream::new(outbound_messages);
         let message_sender = BufDnsRequestStreamHandle { sender };
 
         DnsExchangeConnect::connect(connect_future, outbound_messages, message_sender)
@@ -130,7 +132,7 @@ where
     S: DnsRequestSender + 'static + Send + Unpin,
 {
     io_stream: S,
-    outbound_messages: Peekable<mpsc::Receiver<OneshotDnsRequest>>,
+    outbound_messages: Peekable<tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>>,
     marker: PhantomData<TE>,
 }
 
@@ -138,7 +140,12 @@ impl<S, TE> DnsExchangeBackground<S, TE>
 where
     S: DnsRequestSender + 'static + Send + Unpin,
 {
-    fn pollable_split(&mut self) -> (&mut S, &mut Peekable<mpsc::Receiver<OneshotDnsRequest>>) {
+    fn pollable_split(
+        &mut self,
+    ) -> (
+        &mut S,
+        &mut Peekable<tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>>,
+    ) {
         (&mut self.io_stream, &mut self.outbound_messages)
     }
 }
@@ -240,7 +247,7 @@ where
 {
     fn connect(
         connect_future: F,
-        outbound_messages: mpsc::Receiver<OneshotDnsRequest>,
+        outbound_messages: tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>,
         sender: BufDnsRequestStreamHandle,
     ) -> Self {
         Self(DnsExchangeConnectInner::Connecting {
@@ -273,7 +280,7 @@ where
 {
     Connecting {
         connect_future: F,
-        outbound_messages: Option<mpsc::Receiver<OneshotDnsRequest>>,
+        outbound_messages: Option<tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>>,
         sender: Option<BufDnsRequestStreamHandle>,
     },
     Connected {
@@ -282,7 +289,7 @@ where
     },
     FailAll {
         error: ProtoError,
-        outbound_messages: mpsc::Receiver<OneshotDnsRequest>,
+        outbound_messages: tokio_stream::wrappers::ReceiverStream<OneshotDnsRequest>,
     },
 }
 

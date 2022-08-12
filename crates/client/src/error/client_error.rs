@@ -9,7 +9,6 @@
 
 use std::{fmt, io};
 
-use futures_channel::mpsc;
 use thiserror::Error;
 use trust_dns_proto::error::{ProtoError, ProtoErrorKind};
 
@@ -46,8 +45,8 @@ pub enum ErrorKind {
     Proto(#[from] ProtoError),
 
     /// Queue send error
-    #[error("error sending to mpsc: {0}")]
-    SendError(#[from] mpsc::SendError),
+    #[error("error sending to mpsc")]
+    SendError,
 
     /// A request timed out
     #[error("request timed out")]
@@ -64,7 +63,7 @@ impl Clone for ErrorKind {
             DnsSec(dnssec) => DnsSec(dnssec.clone()),
             Io(io) => Io(std::io::Error::from(io.kind())),
             Proto(proto) => Proto(proto.clone()),
-            SendError(e) => SendError(e.clone()),
+            SendError => SendError,
             Timeout => Timeout,
         }
     }
@@ -115,12 +114,6 @@ impl From<ErrorKind> for Error {
 impl From<&'static str> for Error {
     fn from(msg: &'static str) -> Self {
         ErrorKind::Message(msg).into()
-    }
-}
-
-impl From<mpsc::SendError> for Error {
-    fn from(e: mpsc::SendError) -> Self {
-        ErrorKind::from(e).into()
     }
 }
 

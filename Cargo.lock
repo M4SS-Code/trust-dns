@@ -1610,6 +1610,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-stream"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df54d54117d6fdc4e4fea40fe1e4e566b3505700e148a6827e59b34b0d2600d9"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1721,7 +1733,6 @@ dependencies = [
  "cfg-if",
  "data-encoding",
  "futures",
- "futures-channel",
  "futures-util",
  "lazy_static",
  "openssl",
@@ -1783,7 +1794,6 @@ dependencies = [
  "cfg-if",
  "data-encoding",
  "enum-as-inner",
- "futures-channel",
  "futures-executor",
  "futures-io",
  "futures-util",
@@ -1809,6 +1819,7 @@ dependencies = [
  "tokio-native-tls",
  "tokio-openssl",
  "tokio-rustls",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
  "url",

@@ -13,9 +13,9 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures_channel::mpsc;
 use futures_util::ready;
 use futures_util::stream::Stream;
+use tokio::sync::mpsc;
 
 use crate::error::{ProtoError, ProtoErrorKind, ProtoResult};
 use crate::op::{Message, ResponseCode};
@@ -60,7 +60,7 @@ impl Stream for DnsResponseStream {
                 *done = true;
                 x
             }
-            Receiver(ref mut fut) => match ready!(Pin::new(fut).poll_next(cx)) {
+            Receiver(ref mut fut) => match ready!(Pin::new(fut).poll_recv(cx)) {
                 Some(x) => x,
                 None => return Poll::Ready(None),
             },
